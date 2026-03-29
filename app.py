@@ -65,8 +65,19 @@ DEFAULT_EFF_PCT = 90.0
 # Tỷ lệ kWp / kW inverter từ file (8.82 / 8) — khi inverter là giới hạn AC
 DEFAULT_KP_W_RATIO = 1.24
 DEFAULT_DAYS_MONTH = 30
-# Hệ số điều chỉnh công suất inverter để fit thực tế
-adjust_factor = 0.8 # Hệ số hiệu chỉnh công suất inverter để fit thực tế
+
+
+def inverter_adjust_factor_from_monthly_bill(bill_vnd: float) -> float:
+    """
+    Hệ số hiệu chỉnh công suất inverter theo tiền điện nhập vào (đồng/tháng).
+    ≤ 5.000.000 → 0,75; ≥ 10.000.000 → 0,6; giữa hai mức nội suy tuyến tính.
+    """
+    if bill_vnd <= 5_000_000:
+        return 0.75
+    if bill_vnd >= 10_000_000:
+        return 0.6
+    return 0.75 - (bill_vnd - 5_000_000) * (0.15 / 5_000_000)
+
 
 def electricity_cost_pretax_vnd(kwh: float) -> float:
     """Tổng tiền điện chưa thuế (VNĐ) theo bậc thang."""
@@ -127,6 +138,7 @@ def min_inverter_kw_and_kwp(
     efficiency_percent: float,
     days_per_month: float,
     kwp_per_kw_inverter: float,
+    adjust_factor: float = 1.0,
 ) -> tuple[float, float, float]:
     """
     Theo file: sản lượng/ngày = min(kWp, kW inverter) × giờ nắng × (hiệu suất/100).
@@ -142,7 +154,7 @@ def min_inverter_kw_and_kwp(
 
     daily_need = monthly_kwh / days_per_month
     eta = efficiency_percent / 100.0
-    p_req = daily_need / (sun_hours_per_day * eta) * adjust_factor
+    p_req = daily_need / (sun_hours_per_day * eta) * float(adjust_factor)
 
     r = max(kwp_per_kw_inverter, 1e-9)
     if r >= 1.0:
@@ -236,6 +248,8 @@ def main() -> None:
             format="%.0f",
         )
 
+    adjust_factor = inverter_adjust_factor_from_monthly_bill(bill)
+
     pretax = bill / (1.0 + vat_rate) if bill_includes_vat else bill
     after_tax = pretax * (1.0 + vat_rate)
     kwh_est = solve_kwh_from_bill(bill, vat_rate, bill_includes_vat)
@@ -257,7 +271,7 @@ def main() -> None:
     )
 
     p_inv, kwp, daily_need = min_inverter_kw_and_kwp(
-        kwh_est, sun_h, eff_pct, days_m, ratio
+        kwh_est, sun_h, eff_pct, days_m, ratio, adjust_factor
     )
 
     st.divider()
