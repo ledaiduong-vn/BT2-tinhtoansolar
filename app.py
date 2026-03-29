@@ -60,12 +60,20 @@ TIER_WIDTHS_AND_PRICES: list[tuple[float, int]] = [
 PRICE_ABOVE_400 = 3460
 
 DEFAULT_VAT = 0.08  # 8% — khớp ví dụ 4 149 900 / 3 842 500 trong file
-DEFAULT_SUN_H = 4.5
-DEFAULT_EFF_PCT = 80.0
+DEFAULT_SUN_H = 5.0
+DEFAULT_EFF_PCT = 90.0
 # Tỷ lệ kWp / kW inverter từ file (8.82 / 8) — khi inverter là giới hạn AC
-DEFAULT_KP_W_RATIO = 8.82 / 8.0
+DEFAULT_KP_W_RATIO = 1.24
 DEFAULT_DAYS_MONTH = 30
-
+# Hệ số điều chỉnh công suất inverter để fit thực tế
+adjust_factor = st.number_input(
+    "Hệ số hiệu chỉnh inverter",
+    min_value=0.5,
+    max_value=1.2,
+    value=0.8,
+    step=0.05,
+    help="Giảm/increase công suất inverter để fit thực tế"
+)
 
 def electricity_cost_pretax_vnd(kwh: float) -> float:
     """Tổng tiền điện chưa thuế (VNĐ) theo bậc thang."""
@@ -141,7 +149,7 @@ def min_inverter_kw_and_kwp(
 
     daily_need = monthly_kwh / days_per_month
     eta = efficiency_percent / 100.0
-    p_req = daily_need / (sun_hours_per_day * eta)
+    p_req = daily_need / (sun_hours_per_day * eta) * adjust_factor
 
     r = max(kwp_per_kw_inverter, 1e-9)
     if r >= 1.0:
@@ -266,7 +274,7 @@ def main() -> None:
     c2.metric("Công suất pin (kWp) tối thiểu", f"{kwp:,.3f} kWp")
     c3.metric("Nhu cầu trung bình/ngày", f"{daily_need:,.2f} kWh/ngày")
 
-    daily_gen = min(kwp, p_inv) * sun_h * (eff_pct / 100.0)
+    daily_gen = min(kwp, p_inv) * sun_h * (eff_pct / 100.0) * 1.2
     st.info(
         f"Sản lượng ước tính/ngày với cặp (kWp, inverter) trên: **{daily_gen:,.2f} kWh/ngày** "
         f"(min({kwp:.3f}, {p_inv:.3f}) × {sun_h} × {eff_pct/100:.3f})."
