@@ -66,14 +66,7 @@ DEFAULT_EFF_PCT = 90.0
 DEFAULT_KP_W_RATIO = 1.24
 DEFAULT_DAYS_MONTH = 30
 # Hệ số điều chỉnh công suất inverter để fit thực tế
-adjust_factor = st.number_input(
-    "Hệ số hiệu chỉnh inverter",
-    min_value=0.5,
-    max_value=1.2,
-    value=0.8,
-    step=0.05,
-    help="Giảm/increase công suất inverter để fit thực tế"
-)
+adjust_factor = 0.8 # Hệ số hiệu chỉnh công suất inverter để fit thực tế
 
 def electricity_cost_pretax_vnd(kwh: float) -> float:
     """Tổng tiền điện chưa thuế (VNĐ) theo bậc thang."""
