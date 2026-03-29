@@ -5,7 +5,48 @@
 
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+
 import streamlit as st
+
+_BASE_DIR = Path(__file__).resolve().parent
+LOGO_FILE = _BASE_DIR / "Annotation 2026-03-25 194156.png"
+BACKGROUND_FILE = _BASE_DIR / "anh nen.jpg"
+
+
+def _inject_background_css(image_path: Path) -> None:
+    if not image_path.is_file():
+        return
+    raw = image_path.read_bytes()
+    mime = "image/jpeg"
+    if image_path.suffix.lower() in (".png",):
+        mime = "image/png"
+    b64 = base64.b64encode(raw).decode("ascii")
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: linear-gradient(
+                rgba(255, 255, 255, 0.78),
+                rgba(255, 255, 255, 0.78)
+            ), url("data:{mime};base64,{b64}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        [data-testid="stSidebar"] {{
+            background-color: rgba(250, 250, 250, 0.92);
+        }}
+        .main .block-container {{
+            background-color: rgba(255, 255, 255, 0.96);
+            padding: 1.5rem 1.25rem;
+            border-radius: 0.5rem;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # --- Bậc giá điện (đồng/kWh) — khớp sheet "Tool" trong DENERGY_tool tinh toan.xlsx ---
 # Mỗi phần tử: (số kWh tối đa của bậc, đơn giá). Bậc cuối không giới hạn.
@@ -116,11 +157,22 @@ def min_inverter_kw_and_kwp(
 
 def main() -> None:
     st.set_page_config(page_title="Điện mặt trời áp mái — DENERGY", layout="wide")
-    st.title("Tính toán hệ thống điện mặt trời áp mái")
-    st.caption(
-        "Số kWh suy ra từ giá bậc thang + VAT; công suất pin / inverter theo "
-        "công thức: min(kWp, kW inverter) × giờ nắng × hiệu suất (file DENERGY)."
-    )
+    _inject_background_css(BACKGROUND_FILE)
+    if not BACKGROUND_FILE.is_file():
+        st.warning(f"Không tìm thấy ảnh nền: {BACKGROUND_FILE.name}")
+
+    title_col, logo_col = st.columns([4, 1])
+    with title_col:
+        st.title("DENERGY-Tính toán hệ thống điện mặt trời áp mái")
+        st.caption(
+            "Số kWh suy ra từ giá bậc thang + VAT; công suất pin / inverter theo "
+            "công thức: min(kWp, kW inverter) × giờ nắng × hiệu suất (file DENERGY)."
+        )
+    with logo_col:
+        if LOGO_FILE.is_file():
+            st.image(str(LOGO_FILE), use_container_width=True)
+        else:
+            st.caption(f"Không tìm thấy logo: {LOGO_FILE.name}")
 
     with st.sidebar:
         st.header("Tham số")
